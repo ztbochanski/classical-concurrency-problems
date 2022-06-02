@@ -1,15 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 #include <pthread.h>
 #include <semaphore.h>
 
-#define SHARED 1
+#define BUFFER 1
 
 // semaphores
 sem_t empty, full, mutex_lock;
-int data;
 
 //
 // producer - create a producer: set wait and lock resources, display data
@@ -57,6 +55,9 @@ void *consumer(void *num)
   printf("..Unlocked, buffer empty...\n");
 }
 
+//
+// consumer producer - create specified number of consumer and producer threads
+//
 void consumer_producer(int prdcr, int cnsmr)
 {
 
@@ -64,9 +65,9 @@ void consumer_producer(int prdcr, int cnsmr)
   // sem_init() initializes the unnamed semaphore at the address
   //    pointed to by sem.  The value argument specifies the initial
   //     value for the semaphore.
-  sem_init(&empty, SHARED, 1);
-  sem_init(&full, SHARED, 0);
-  sem_init(&mutex_lock, SHARED, 1);
+  sem_init(&empty, BUFFER, 1);
+  sem_init(&full, BUFFER, 0);
+  sem_init(&mutex_lock, BUFFER, 1);
 
   // process producers
   for (int i = 0; i < prdcr; i++)
