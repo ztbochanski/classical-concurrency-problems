@@ -1,4 +1,4 @@
-# Concurrency Problems
+# Classical Concurrency Problems
 
 >Exploring classical concurrency problems to outline basic principles of synchronization for use in *concurrent programming.*
 
