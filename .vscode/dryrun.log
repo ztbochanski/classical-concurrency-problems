@@ -1,0 +1,5 @@
+make: Entering directory `/Users/zach/Desktop/concurrency_problems'
+gcc -Wall -Wextra -o conprobs conprobs.c 
+ 
+make: Leaving directory `/Users/zach/Desktop/concurrency_problems'
+ 
