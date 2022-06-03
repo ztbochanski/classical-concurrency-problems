@@ -1,12 +1,84 @@
 #include <stdio.h>
+#include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
 #include <semaphore.h>
-
 #define BUFFER 1
 
-// semaphores
+// ---------------------------------------------------------------------------------------------------------------------
+// DINING PHILOSOPHERS PROBLEM
+// ---------------------------------------------------------------------------------------------------------------------
+
+// semaphores for dining philosophers
+// binary semaphore
+sem_t dining_room;
+// counting semaphore
+sem_t utensils[4];
+
+//
+// current philosopher mutates semaphores to busy and allows philosopher to eat
+//
+void *current_philosopher(void *num)
+{
+  int philosopher = *(int *)num;
+  sem_wait(&dining_room);
+  printf("Philosopher %d has walked in the dining room\n", philosopher + 1);
+
+  // wait for philosopher to use for resource
+  sem_wait(&utensils[philosopher]);
+  sem_wait(&utensils[(philosopher + 1) % 4]);
+
+  // philosopher uses utensils to eat and then finishes
+  printf("Philosopher %d is eating\n", philosopher + 1);
+  sleep(1); // wait for effect
+  printf("Philosopher %d has finished eating\n", philosopher + 1);
+
+  // allow for others to eat
+  sem_post(&utensils[(philosopher + 1) % 4]);
+  sem_post(&utensils[philosopher]);
+  sem_post(&dining_room);
+}
+
+//
+// dining philosophers initializes philosopher threads, creates and joins threads
+//
+void dining_philosophers(void)
+{
+
+  // position at table and thread for that philosopher
+  int position[4];
+  pthread_t thread_id[4];
+  // initialize the semaphore
+  sem_init(&dining_room, 0, 3);
+
+  // iterate through utensilss (positions at the table) and init the counting semaphores
+  for (int i = 0; i < 4; i++)
+  {
+    sem_init(&utensils[i], 0, 1);
+  }
+
+  // create threads for each of the positions
+  for (int i = 0; i < 4; i++)
+  {
+    // assign the the available position to a position
+    position[i] = i;
+    // create a thread for this seating position
+    pthread_create(&thread_id[i], NULL, current_philosopher, (void *)&position[i]);
+  }
+
+  // wait for threads to execute then join back to main process
+  for (int i = 0; i < 4; i++)
+  {
+    pthread_join(thread_id[i], NULL);
+  }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// PRODUCER/CONSUMER PROBLEM
+// ---------------------------------------------------------------------------------------------------------------------
+
+// semaphores for producer consumer
 sem_t empty, full, mutex_lock;
 
 //
@@ -97,6 +169,10 @@ void consumer_producer(int prdcr, int cnsmr)
   printf("\nProducer problem completed!\n");
 }
 
+// ---------------------------------------------------------------------------------------------------------------------
+// SHELL INTERACTION
+// ---------------------------------------------------------------------------------------------------------------------
+
 //
 // main -- process command line
 //
@@ -131,8 +207,16 @@ int main(int argc, char *argv[])
     }
     else if (strcmp(argv[i], "-d") == 0)
     {
-      // -d philosopher's problem
-      // int option = atoi(argv[++i]);
+      if (argc > 2)
+      {
+        fprintf(stderr, "invalid options: use only conprobs -d\n");
+        return 1;
+      }
+      else
+      {
+        // -d philosopher's problem
+        dining_philosophers();
+      }
     }
     else if (strcmp(argv[i], "-b") == 0)
     {
