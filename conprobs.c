@@ -4,7 +4,134 @@
 #include <string.h>
 #include <pthread.h>
 #include <semaphore.h>
+#include <errno.h>
 #define BUFFER 1
+
+// ---------------------------------------------------------------------------------------------------------------------
+// POTION BREWERS PROBLEM
+// ---------------------------------------------------------------------------------------------------------------------
+
+// counting semaphore for each brewer
+// each brewer has a unique infinite supply of bezoars, unicorn horns, or mistletoe berries.
+sem_t brewers[3];
+// binary semaphore for the agent who give out ingredients
+sem_t agent;
+// define custom type for brewers and their type
+typedef void *(*brewers_t)(void *);
+// legal potion brew limit per epoch for brewers
+int BREW_LIMIT = 1 // potions/epoch
+
+                 //
+                 // brewer with an infinite supply of bezoars
+                 //
+                 void *
+                 potion_brewer_with_bezoars(void *arg)
+{
+  while (BREW_LIMIT != 0)
+  {
+    sleep(1);
+    printf("\nBezoars brewer waiting to brew...)\n");
+    // brewer 0 the bezoars brewer is locked
+    sem_wait(&brewers[0]);
+    printf("Bezoars brewer now has bezoars, unicorn horns, and mistletoe berries... brewing...\n");
+    // signal the agent that the resource is free and in need of it again
+    sem_post(&agent);
+    BREW_LIMIT--;
+  }
+  return NULL;
+}
+
+//
+// brewer with an infinite supply of unicorn horns
+//
+void *
+potion_brewer_with_unicorn_horns(void *arg)
+{
+  while (BREW_LIMIT != 0)
+  {
+    sleep(1);
+    printf("\nUnicorn brewer waiting to brew...)\n");
+    // brewer 0 the unicorn_horns brewer is locked
+    sem_wait(&brewers[1]);
+    printf("Unicorn brewer now has unicorn horns, bezoars, and mistletoe berries... brewing...\n");
+    // signal the agent that the resource is free and in need of it again
+    sem_post(&agent);
+    BREW_LIMIT--;
+  }
+  return NULL;
+}
+
+//
+// brewer with an infinite supply of mistletoe berries
+//
+void *
+potion_brewer_with_mistletoe_berries(void *arg)
+{
+  while (BREW_LIMIT != 0)
+  {
+    sleep(1);
+    printf("\nMistletoe brewer waiting to brew...)\n");
+    // brewer 0 the unicorn_horns brewer is locked
+    sem_wait(&brewers[2]);
+    printf("Mistletoe brewer now has mistletoe berries, bezoars, and unicorn horns... brewing...\n");
+    // signal the agent that the resource is free and in need of it again
+    sem_post(&agent);
+    BREW_LIMIT--;
+  }
+  return NULL;
+}
+
+//
+// agent hands hands out ingredient deliveries to the three brewers
+//
+void *agent_and_brewers(void)
+{
+  // initialize binary semaphore for agent
+  sem_init(&agent, 0, 1);
+
+  // define threads for each of the brewers
+  pthread_t brewer_threads[3];
+  brewers_t brewer_types[3] = {
+      potion_brewer_with_bezoars,
+      potion_brewer_with_unicorn_horns,
+      potion_brewer_with_mistletoe_berries,
+  };
+
+  // create the brewer threads and init the brewer semaphores
+  for (int i = 0; i < 3; ++i)
+  {
+    // init the brewer semaphore
+    sem_init(&brewers[i], 0, 0);
+
+    // create threads, if there it's blocked return 0: linux manual:
+    // EAGAIN Resource temporarily unavailable (may be the same value as
+    //          EWOULDBLOCK) (POSIX.1-2001).
+    if (pthread_create(&brewer_threads[i], NULL, brewer_types[i], NULL) == EAGAIN)
+    {
+      perror("Could not create thread\n");
+      return 0;
+    }
+  }
+
+  // count for duration of brew cycles
+  int ingredient_epochs = 1;
+  // agent gives out ingredients
+  while (ingredient_epochs != 0)
+  {
+    // lock agent when they are delivering
+    sem_wait(&agent);
+
+    // deliver ingredients to a brewer
+    sem_post(&brewers[rand() % 2]);
+    ingredient_epochs--;
+  }
+
+  // join brewers threads
+  for (int i = 0; i < 3; ++i)
+  {
+    pthread_join(brewer_threads[i], NULL);
+  }
+}
 
 // ---------------------------------------------------------------------------------------------------------------------
 // DINING PHILOSOPHERS PROBLEM
@@ -220,8 +347,16 @@ int main(int argc, char *argv[])
     }
     else if (strcmp(argv[i], "-b") == 0)
     {
-      // -b potion brewers problem
-      // int option = atoi(argv[++i]);
+      if (argc > 2)
+      {
+        fprintf(stderr, "invalid options: use only conprobs -b\n");
+        return 1;
+      }
+      else
+      {
+        // -b potion brewers problem
+        agent_and_brewers();
+      }
     }
     else
     {
